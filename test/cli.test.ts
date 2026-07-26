@@ -147,6 +147,84 @@ describe("CLI compatibility", () => {
     expect(settings.statusLine.command).toMatch(/render$/);
     rmSync(dir, { recursive: true, force: true });
   });
+
+  test("installClaude installs into an explicit path while the session is bound to a profile", () => {
+    const ambient = mkdtempSync(join(tmpdir(), "statusline-ambient-"));
+    const dir = mkdtempSync(join(tmpdir(), "statusline-install-"));
+    const settingsPath = join(dir, "settings.json");
+    const previous = process.env.CLAUDE_CONFIG_DIR;
+    process.env.CLAUDE_CONFIG_DIR = ambient;
+    try {
+      expect(installClaude(settingsPath)).toBe(settingsPath);
+      expect(JSON.parse(readFileSync(settingsPath, "utf8")).statusLine.type).toBe("command");
+      // the operator's own profile is not a party to this install
+      expect(existsSync(join(ambient, "settings.json"))).toBe(false);
+    } finally {
+      if (previous === undefined) delete process.env.CLAUDE_CONFIG_DIR;
+      else process.env.CLAUDE_CONFIG_DIR = previous;
+      rmSync(ambient, { recursive: true, force: true });
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test("installClaude never fabricates a dir it was pointed at, bound session or not", () => {
+    const base = mkdtempSync(join(tmpdir(), "statusline-missing-"));
+    const missing = join(base, "profile-nobody-created");
+    const settingsPath = join(missing, "settings.json");
+    const previous = process.env.CLAUDE_CONFIG_DIR;
+    try {
+      // same call, same answer — the installing shell must not decide this
+      for (const bound of [undefined, base]) {
+        if (bound === undefined) delete process.env.CLAUDE_CONFIG_DIR;
+        else process.env.CLAUDE_CONFIG_DIR = bound;
+        expect(() => installClaude(settingsPath)).toThrow(`config dir ${missing} does not exist`);
+        expect(existsSync(missing)).toBe(false);
+      }
+    } finally {
+      if (previous === undefined) delete process.env.CLAUDE_CONFIG_DIR;
+      else process.env.CLAUDE_CONFIG_DIR = previous;
+      rmSync(base, { recursive: true, force: true });
+    }
+  });
+
+  test("installClaude refuses to create a missing isolated config dir", () => {
+    const ambient = mkdtempSync(join(tmpdir(), "statusline-ambient-"));
+    const base = mkdtempSync(join(tmpdir(), "statusline-isolated-"));
+    const missing = join(base, "account999");
+    const previous = process.env.CLAUDE_CONFIG_DIR;
+    // never let a regression here write into the profile the test runner is under
+    process.env.CLAUDE_CONFIG_DIR = ambient;
+    try {
+      expect(() => installClaude(undefined, { HOME: base, CLAUDE_CONFIG_DIR: missing })).toThrow(
+        `config dir ${missing} does not exist — create the profile first`,
+      );
+      expect(existsSync(missing)).toBe(false);
+      expect(existsSync(join(ambient, "settings.json"))).toBe(false);
+    } finally {
+      if (previous === undefined) delete process.env.CLAUDE_CONFIG_DIR;
+      else process.env.CLAUDE_CONFIG_DIR = previous;
+      rmSync(ambient, { recursive: true, force: true });
+      rmSync(base, { recursive: true, force: true });
+    }
+  });
+
+  test("installClaude creates the default config dir on a first install, following the env it was given", () => {
+    const ambient = mkdtempSync(join(tmpdir(), "statusline-ambient-"));
+    const home = mkdtempSync(join(tmpdir(), "statusline-home-"));
+    const previous = process.env.CLAUDE_CONFIG_DIR;
+    process.env.CLAUDE_CONFIG_DIR = ambient;
+    try {
+      const written = installClaude(undefined, { HOME: home });
+      expect(written).toBe(join(home, ".claude", "settings.json"));
+      expect(JSON.parse(readFileSync(written, "utf8")).statusLine.type).toBe("command");
+      expect(existsSync(join(ambient, "settings.json"))).toBe(false);
+    } finally {
+      if (previous === undefined) delete process.env.CLAUDE_CONFIG_DIR;
+      else process.env.CLAUDE_CONFIG_DIR = previous;
+      rmSync(ambient, { recursive: true, force: true });
+      rmSync(home, { recursive: true, force: true });
+    }
+  });
 });
 
 describe("cli list", () => {

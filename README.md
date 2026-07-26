@@ -253,10 +253,14 @@ statusline install claude
 `installClaude()` writes to `$CLAUDE_CONFIG_DIR/settings.json`, falling back to
 `~/.claude/settings.json`. This matters for multi-account setups: when a session is
 bound to an isolated config dir, `~/.claude/settings.json` is never read, so
-installing there wires up a statusline that silently never runs. With
-`CLAUDE_CONFIG_DIR` set the dir must already exist — installing into an isolated
-config dir is a request to configure a profile someone else created, not to
-fabricate one.
+installing there wires up a statusline that silently never runs.
+
+Only `~/.claude` is created on demand. Every other target — an isolated config
+dir, or a path passed as `installClaude(path)` — must already exist: installing
+there is a request to configure a profile someone else created, not to fabricate
+one. The rule follows the target, not the shell you install from, so driving a
+list of profiles gives the same answer from any session. Pass the environment to
+resolve against as `installClaude(undefined, env)`.
 
 ```json
 {

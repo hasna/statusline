@@ -25,10 +25,15 @@ All notable changes to `@hasna/statusline` are documented here.
   worse, a stale one. `.config.json` precedence and non-production OAuth variants
   are handled too. New `sessionStateFile()` export.
 - Never adopt another tool's registry entry when several claim one config dir.
-- `installClaude()` no longer creates a missing isolated config dir (driven from a
-  registry listing that would fabricate other machines' profile trees), no longer
-  throws an unhelpful parse error on malformed settings, and preserves other keys
-  on an existing `statusLine` such as `padding`.
+- `installClaude()` creates only `~/.claude` on demand: a missing isolated config
+  dir, or any path handed to it, is refused rather than fabricated (driven from a
+  registry listing that would otherwise conjure other machines' profile trees). The
+  decision follows the target path and the `env` now threaded through
+  `installClaude(settingsPath, env)`, not the installing shell's own
+  `CLAUDE_CONFIG_DIR` — the same call no longer does opposite things depending on
+  which profile the operator happens to be in. It also no longer throws an unhelpful
+  parse error on malformed settings, and preserves other keys on an existing
+  `statusLine` such as `padding`.
 - Ask `@hasna/accounts` where its state lives when it is installed, instead of only
   assuming its default paths. Lazy, optional, and not a dependency.
 
