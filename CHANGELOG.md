@@ -2,6 +2,21 @@
 
 All notable changes to `@hasna/statusline` are documented here.
 
+## Unreleased
+
+- Add `auth-profile` and `auth-email` segments that report the account **this
+  session** runs as, resolved from the process's own `CLAUDE_CONFIG_DIR` rather
+  than any global active-profile pointer, so concurrent sessions under different
+  accounts each render their own.
+- Add `model-with-reasoning`, `five-hour-limit`, and `thread-title` segments, and
+  parse `effort.level`, `thinking.enabled`, `rate_limits.*`, and `session_name`
+  from the Claude Code payload.
+- Fix `statusline install claude` writing to `~/.claude/settings.json` even when
+  the session is bound to an isolated `CLAUDE_CONFIG_DIR` — the installed
+  statusline never ran. New `claudeSettingsPath()` export resolves the real target.
+- Add optional per-segment colours (`statusline colors on|off`, config `colors`,
+  `NO_COLOR` respected); `five-hour-limit` turns red past 80%.
+
 ## 0.0.2 - 2026-07-24
 
 - Compact `statusline list` output by default: enabled rows first, row caps,

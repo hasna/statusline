@@ -39,6 +39,11 @@ anything that returns `null` or throws. A failed segment never breaks the host U
 | `current-dir` | off | Current working directory (basename) | `StatusContext.cwd` | never (always renders basename) | `open-statusline` |
 | `model` | off | Current model name (no context tag) | `StatusContext.model.id` via friendly formatter | no model id | `fable 5` |
 | `model-context` | on | Model name with context-size tag | same formatter, keeps `[tag]` suffix | no model id | `fable 5 [1m]` |
+| `model-with-reasoning` | off | Model name with its reasoning effort | `model.display_name` (or friendly id) + `effort.level`, else `thinking.enabled` | no model | `Fable (xhigh)` |
+| `auth-profile` | off | Account profile this session runs as | this process's `CLAUDE_CONFIG_DIR`, resolved against the accounts registry | config dir is unmanaged and has no login | `account001` |
+| `auth-email` | off | Account email this session is logged in as | `oauthAccount.emailAddress` in the config dir, else the registry | no login recorded | `dev@example.com` |
+| `five-hour-limit` | off | Percentage of the 5-hour rate limit used | `rate_limits.five_hour.used_percentage` | host reports no limit data | `5h:42%` |
+| `thread-title` | off | Thread title set with `/rename` | `session_name` | thread not renamed | `ship it` |
 | `context-used` | off | Percentage of context window used | session transcript JSONL (`contextUsage`) | transcript missing/unreadable | `10%` |
 | `context-remaining` | on | Percentage of context window remaining | transcript via `contextUsage` | transcript missing/unreadable | `90% left` |
 | `used-tokens` | off | Total tokens in the context window | transcript usage block (input + output) | transcript missing/unreadable | `102k tok` |
@@ -59,6 +64,37 @@ JSONL for the last assistant entry with a `usage` block and sums
 
 With the test fixture transcript (100k input-side tokens on a 1m window), expect
 `context-used` → `10%`, `context-remaining` → `90% left`, `used-tokens` → `102k tok`.
+
+### Which account am I? (`auth-profile`)
+
+Statusline payloads carry no account or profile field, so `auth-profile` reads the
+config dir **this process** was handed — `CLAUDE_CONFIG_DIR`, which multi-account
+launchers set per session — and resolves it in order:
+
+1. the `@hasna/accounts` registry entry whose `dir` matches (gives the profile name);
+2. the managed layout `<accountsHome>/profiles/<tool>/<name>`, for dirs the local
+   registry has no entry for;
+3. the account email the agent recorded in that dir, when neither names a profile.
+
+It never consults an "active"/"current" profile pointer. Those are global: two
+sessions running under different accounts would both report whichever profile was
+switched to last. Resolving from the process's own config dir keeps concurrent
+sessions independent.
+
+Registry location follows `@hasna/accounts`' own overrides — `ACCOUNTS_STORE_PATH`,
+then `ACCOUNTS_HOME`, then `~/.hasna/accounts`. When none of it is present the
+segment renders nothing rather than guessing.
+
+### Colours
+
+Segments may declare a colour, applied by `renderLine` when colours are on
+(the default). `five-hour-limit` escalates from yellow to red past 80%.
+
+```bash
+statusline colors off      # or set "colors": false in the config
+```
+
+`NO_COLOR` in the environment always wins.
 
 ### Quick reference from `statusline list`
 
@@ -109,6 +145,7 @@ statusbar width.
 statusline list                          # compact segment summary
 statusline enable used-tokens duration    # turn segments on (appended at the end)
 statusline disable loc                    # turn segments off
+statusline colors off                     # drop ANSI colours
 statusline order machine project model-context cost   # exact order = enabled set
 statusline separator " | "                # change the separator
 statusline preview                        # render a sample line from the current dir
@@ -198,7 +235,10 @@ bun install -g @hasna/statusline
 statusline install claude
 ```
 
-`installClaude()` writes to `~/.claude/settings.json`:
+`installClaude()` writes to `$CLAUDE_CONFIG_DIR/settings.json`, falling back to
+`~/.claude/settings.json`. This matters for multi-account setups: when a session is
+bound to an isolated config dir, `~/.claude/settings.json` is never read, so
+installing there wires up a statusline that silently never runs.
 
 ```json
 {
@@ -222,8 +262,13 @@ on every status refresh — **no restart needed**.
 | `cost.total_lines_added/removed` | `cost.totalLinesAdded/Removed` |
 | `transcript_path` | `transcriptPath` |
 | `session_id` | `sessionId` |
+| `session_name` | `sessionName` |
 | `version` | `version` |
 | `output_style.name` | `outputStyle` |
+| `effort.level` | `effort` |
+| `thinking.enabled` | `thinking` |
+| `rate_limits.five_hour.used_percentage` | `rateLimits.fiveHour.usedPercentage` |
+| `rate_limits.week.used_percentage` | `rateLimits.week.usedPercentage` |
 
 Every field is optional — partial or empty payloads still produce a usable context.
 

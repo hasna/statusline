@@ -3,10 +3,21 @@ import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 
 /**
+ * Settings file the running agent actually reads. When a session is bound to
+ * an isolated config dir (multi-account setups export `CLAUDE_CONFIG_DIR`),
+ * `~/.claude/settings.json` is never loaded — installing there wires up a
+ * statusline that silently never runs.
+ */
+export function claudeSettingsPath(env: Record<string, string | undefined> = process.env): string {
+  const configDir = env.CLAUDE_CONFIG_DIR?.trim() || join(env.HOME || homedir(), ".claude");
+  return join(configDir, "settings.json");
+}
+
+/**
  * Wire the statusline into Claude Code's user settings. Existing settings
  * are preserved; the previous file is backed up alongside it.
  */
-export function installClaude(settingsPath = join(homedir(), ".claude", "settings.json")): string {
+export function installClaude(settingsPath = claudeSettingsPath()): string {
   const binary = Bun.which("statusline") || "statusline";
   let settings: Record<string, any> = {};
   if (existsSync(settingsPath)) {

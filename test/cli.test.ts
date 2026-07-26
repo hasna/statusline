@@ -2,20 +2,23 @@ import { describe, expect, test } from "bun:test";
 import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { installClaude } from "../src/install";
+import { claudeSettingsPath, installClaude } from "../src/install";
 import { statuslineVersion } from "../src/index";
 import { defaultConfig } from "../src/config";
 import { segments } from "../src/segments";
 
 function runCli(
   args: string[],
-  options: { stdin?: string; home?: string } = {},
+  options: { stdin?: string; home?: string; configDir?: string } = {},
 ): { exitCode: number | null; stdout: string; stderr: string; home?: string } {
   const dir = mkdtempSync(join(tmpdir(), "statusline-cli-"));
   const env: Record<string, string | undefined> = {
     ...process.env,
     STATUSLINE_CONFIG: join(dir, "config.json"),
+    // never let a test write into the config dir the developer is running under
+    CLAUDE_CONFIG_DIR: options.configDir,
   };
+  if (options.configDir === undefined) delete env.CLAUDE_CONFIG_DIR;
   if (options.home) env.HOME = options.home;
   const proc = Bun.spawnSync(["bun", "src/cli.ts", ...args], {
     cwd: join(import.meta.dir, ".."),
@@ -110,6 +113,28 @@ describe("CLI compatibility", () => {
     }
   });
 
+  test("install claude follows CLAUDE_CONFIG_DIR to the settings the agent reads", () => {
+    const configDir = mkdtempSync(join(tmpdir(), "statusline-configdir-"));
+    const home = mkdtempSync(join(tmpdir(), "statusline-home-"));
+    mkdirSync(join(home, ".claude"), { recursive: true });
+    try {
+      const result = runCli(["install", "claude"], { home, configDir });
+      expect(result.exitCode).toBe(0);
+      expect(result.stdout).toContain(configDir);
+      expect(existsSync(join(configDir, "settings.json"))).toBe(true);
+      // the home-relative path is left alone: the agent never reads it here
+      expect(existsSync(join(home, ".claude", "settings.json"))).toBe(false);
+    } finally {
+      rmSync(configDir, { recursive: true, force: true });
+      rmSync(home, { recursive: true, force: true });
+    }
+  });
+
+  test("claudeSettingsPath prefers the isolated config dir", () => {
+    expect(claudeSettingsPath({ CLAUDE_CONFIG_DIR: "/tmp/profile-x" })).toBe("/tmp/profile-x/settings.json");
+    expect(claudeSettingsPath({ HOME: "/tmp/home-x" })).toBe("/tmp/home-x/.claude/settings.json");
+  });
+
   test("installClaude backs up existing settings and wires command", () => {
     const dir = mkdtempSync(join(tmpdir(), "statusline-install-"));
     const settingsPath = join(dir, "settings.json");
@@ -178,7 +203,7 @@ describe("cli list", () => {
     const out = runCli(["list", "--search", "percentage", "--limit", "2"]);
     expect(out.exitCode).toBe(0);
     expect(out.stdout).toContain("showing 2 of");
-    expect(out.stdout).toContain("context-used");
+    expect(out.stdout).toContain("context-remaining");
     expect(out.stdout).toContain("context-remaining");
     expect(out.stdout).not.toContain("used-tokens");
   });
