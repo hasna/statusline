@@ -4,7 +4,13 @@ import { renderLine } from "./render.js";
 import { getSegment, segments } from "./segments/index.js";
 import pkg from "../package.json";
 
-export { sessionAccount, sessionAccountEmail, sessionConfigDir, type SessionAccount } from "./accounts.js";
+export {
+  sessionAccount,
+  sessionAccountEmail,
+  sessionConfigDir,
+  sessionStateFile,
+  type SessionAccount,
+} from "./accounts.js";
 export { defaultConfig, loadConfig, saveConfig, configPath, type StatuslineConfig } from "./config.js";
 export { contextUsage, type ContextUsage } from "./context-window.js";
 export { compactAge, compactDuration, compactNum, money } from "./format.js";

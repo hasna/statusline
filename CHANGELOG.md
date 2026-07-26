@@ -17,6 +17,21 @@ All notable changes to `@hasna/statusline` are documented here.
 - Add optional per-segment colours (`statusline colors on|off`, config `colors`,
   `NO_COLOR` respected); the rate-limit segments turn red past 80%.
 
+### Fixed after review
+
+- Read the agent's login record where the agent actually writes it. With
+  `CLAUDE_CONFIG_DIR` unset that is `~/.claude.json`, not `~/.claude/.claude.json`
+  — the old path is an unmanaged leftover, so a bare session showed no account, or
+  worse, a stale one. `.config.json` precedence and non-production OAuth variants
+  are handled too. New `sessionStateFile()` export.
+- Never adopt another tool's registry entry when several claim one config dir.
+- `installClaude()` no longer creates a missing isolated config dir (driven from a
+  registry listing that would fabricate other machines' profile trees), no longer
+  throws an unhelpful parse error on malformed settings, and preserves other keys
+  on an existing `statusLine` such as `padding`.
+- Ask `@hasna/accounts` where its state lives when it is installed, instead of only
+  assuming its default paths. Lazy, optional, and not a dependency.
+
 ## 0.0.2 - 2026-07-24
 
 - Compact `statusline list` output by default: enabled rows first, row caps,

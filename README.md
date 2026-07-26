@@ -39,9 +39,9 @@ anything that returns `null` or throws. A failed segment never breaks the host U
 | `current-dir` | off | Current working directory (basename) | `StatusContext.cwd` | never (always renders basename) | `open-statusline` |
 | `model` | off | Current model name (no context tag) | `StatusContext.model.id` via friendly formatter | no model id | `fable 5` |
 | `model-context` | on | Model name with context-size tag | same formatter, keeps `[tag]` suffix | no model id | `fable 5 [1m]` |
-| `model-with-reasoning` | off | Model name with its reasoning effort | `model.display_name` (or friendly id) + `effort.level`, else `thinking.enabled` | no model | `Fable (xhigh)` |
+| `model-with-reasoning` | off | Model name with its reasoning effort | `model.display_name` (or friendly id) + `effort.level`; falls back to `thinking.enabled`, which the host defaults to on | no model | `Fable (xhigh)` |
 | `auth-profile` | off | Account profile this session runs as | this process's `CLAUDE_CONFIG_DIR`, resolved against the accounts registry | config dir is unmanaged and has no login | `account001` |
-| `auth-email` | off | Account email this session is logged in as | `oauthAccount.emailAddress` in the config dir, else the registry | no login recorded | `dev@example.com` |
+| `auth-email` | off | Account email this session is logged in as | the agent's own login record for this config dir, else the registry | no login recorded | `dev@example.com` |
 | `five-hour-limit` | off | Percentage of the 5-hour rate limit used | `rate_limits.five_hour.used_percentage` | host reports no limit data | `5h:42%` |
 | `seven-day-limit` | off | Percentage of the 7-day rate limit used | `rate_limits.seven_day.used_percentage` | host reports no limit data | `7d:12%` |
 | `thread-title` | off | Thread title set with `/rename` | `session_name` | thread not renamed | `ship it` |
@@ -72,19 +72,33 @@ Statusline payloads carry no account or profile field, so `auth-profile` reads t
 config dir **this process** was handed — `CLAUDE_CONFIG_DIR`, which multi-account
 launchers set per session — and resolves it in order:
 
-1. the `@hasna/accounts` registry entry whose `dir` matches (gives the profile name);
+1. the `@hasna/accounts` registry entry whose `dir` matches, preferring one that
+   belongs to the agent being rendered (a dir can be claimed by several tools;
+   another tool's entry is never adopted);
 2. the managed layout `<accountsHome>/profiles/<tool>/<name>`, for dirs the local
    registry has no entry for;
 3. the account email the agent recorded in that dir, when neither names a profile.
 
-It never consults an "active"/"current" profile pointer. Those are global: two
-sessions running under different accounts would both report whichever profile was
-switched to last. Resolving from the process's own config dir keeps concurrent
-sessions independent.
+It never consults an "active"/"current" profile pointer. Those are global — and,
+against a shared registry, global across every machine: two sessions running under
+different accounts would both report whichever profile was switched to last.
+Resolving from the process's own config dir keeps concurrent sessions independent.
 
-Registry location follows `@hasna/accounts`' own overrides — `ACCOUNTS_STORE_PATH`,
-then `ACCOUNTS_HOME`, then `~/.hasna/accounts`. When none of it is present the
-segment renders nothing rather than guessing.
+Where the agent's login record lives mirrors Claude Code's own rule: `.config.json`
+in the config dir wins, otherwise `.claude<oauth-variant>.json`. Note the base dir
+is the config dir **or the home dir** — with `CLAUDE_CONFIG_DIR` unset the file is
+`~/.claude.json`, a sibling of `~/.claude` rather than something inside it.
+
+Registry location comes from `@hasna/accounts` itself when it is installed
+alongside this package (imported lazily, only when an auth segment renders);
+otherwise from its documented overrides `ACCOUNTS_STORE_PATH`, then
+`ACCOUNTS_HOME`, then `~/.hasna/accounts`. `@hasna/accounts` is not a dependency —
+with none of it present the segment renders nothing rather than guessing.
+
+**Known limitation.** Renaming a profile does not move its dir. For a profile the
+local registry has no entry for, step 2 therefore reports the name the dir was
+created with until the registry catches up. Step 1 is tried first so a profile the
+registry knows about always wins.
 
 ### Colours
 
@@ -239,7 +253,10 @@ statusline install claude
 `installClaude()` writes to `$CLAUDE_CONFIG_DIR/settings.json`, falling back to
 `~/.claude/settings.json`. This matters for multi-account setups: when a session is
 bound to an isolated config dir, `~/.claude/settings.json` is never read, so
-installing there wires up a statusline that silently never runs.
+installing there wires up a statusline that silently never runs. With
+`CLAUDE_CONFIG_DIR` set the dir must already exist — installing into an isolated
+config dir is a request to configure a profile someone else created, not to
+fabricate one.
 
 ```json
 {

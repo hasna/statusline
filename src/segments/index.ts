@@ -130,11 +130,11 @@ export const segments: Segment[] = [
     description: "Account profile this session runs as (omitted when unmanaged)",
     defaultEnabled: false,
     color: "magenta",
-    render() {
+    async render(ctx) {
       // Resolved from this process's own config dir, never from a global
       // "active profile" pointer — concurrent sessions must not agree.
-      const account = sessionAccount();
-      return account.profile ?? sessionAccountEmail(process.env, account.configDir);
+      const account = await sessionAccount(process.env, ctx.provider);
+      return account.profile ?? (await sessionAccountEmail(process.env, ctx.provider));
     },
   },
   {
@@ -142,7 +142,7 @@ export const segments: Segment[] = [
     description: "Account email this session is logged in as (omitted when unknown)",
     defaultEnabled: false,
     color: "magenta",
-    render: () => sessionAccountEmail(),
+    render: (ctx) => sessionAccountEmail(process.env, ctx.provider),
   },
   {
     id: "five-hour-limit",
