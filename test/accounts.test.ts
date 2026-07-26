@@ -80,6 +80,14 @@ describe("sessionAccount", () => {
     expect(account.source).toBe("layout");
   });
 
+  test("does not name a profile for a config dir that does not exist", () => {
+    const { root } = accountsHome([{ name: "account001", tool: "claude" }]);
+    const ghost = join(root, "profiles", "claude", "never-created");
+    const account = sessionAccount(env(root, ghost));
+    expect(account.profile).toBeNull();
+    expect(account.source).toBeNull();
+  });
+
   test("does not guess for a dir outside the managed layout", () => {
     const { root } = accountsHome([{ name: "account001", tool: "claude" }]);
     const outside = mkdtempSync(join(tmpdir(), "statusline-outside-"));

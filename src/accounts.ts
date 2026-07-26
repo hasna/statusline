@@ -120,10 +120,11 @@ function registryEntry(env: Env, configDir: string): RegistryEntry | null {
  * under the profiles root names its own tool and profile. This covers dirs the
  * local registry has no entry for — the registry may be a partial view of a
  * shared store, while the dir the process was handed is always real. Dirs
- * outside that root (an imported or hand-pointed config dir) yield null rather
- * than a guess.
+ * outside that root (an imported or hand-pointed config dir), and dirs that do
+ * not exist, yield null rather than naming a profile that isn't there.
  */
 function layoutProfile(env: Env, configDir: string): SessionAccount | null {
+  if (!existsSync(configDir)) return null;
   const prefix = canonical(join(accountsHome(env), PROFILES_SUBDIR), env) + sep;
   if (!configDir.startsWith(prefix)) return null;
   const parts = configDir.slice(prefix.length).split(sep);
