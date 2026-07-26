@@ -22,7 +22,7 @@ export interface StatusContext {
   /** Rate-limit windows, present only once the host reports limit data. */
   rateLimits?: {
     fiveHour?: { usedPercentage?: number };
-    week?: { usedPercentage?: number };
+    sevenDay?: { usedPercentage?: number };
   };
 }
 

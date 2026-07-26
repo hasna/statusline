@@ -43,6 +43,7 @@ anything that returns `null` or throws. A failed segment never breaks the host U
 | `auth-profile` | off | Account profile this session runs as | this process's `CLAUDE_CONFIG_DIR`, resolved against the accounts registry | config dir is unmanaged and has no login | `account001` |
 | `auth-email` | off | Account email this session is logged in as | `oauthAccount.emailAddress` in the config dir, else the registry | no login recorded | `dev@example.com` |
 | `five-hour-limit` | off | Percentage of the 5-hour rate limit used | `rate_limits.five_hour.used_percentage` | host reports no limit data | `5h:42%` |
+| `seven-day-limit` | off | Percentage of the 7-day rate limit used | `rate_limits.seven_day.used_percentage` | host reports no limit data | `7d:12%` |
 | `thread-title` | off | Thread title set with `/rename` | `session_name` | thread not renamed | `ship it` |
 | `context-used` | off | Percentage of context window used | session transcript JSONL (`contextUsage`) | transcript missing/unreadable | `10%` |
 | `context-remaining` | on | Percentage of context window remaining | transcript via `contextUsage` | transcript missing/unreadable | `90% left` |
@@ -88,7 +89,7 @@ segment renders nothing rather than guessing.
 ### Colours
 
 Segments may declare a colour, applied by `renderLine` when colours are on
-(the default). `five-hour-limit` escalates from yellow to red past 80%.
+(the default). The rate-limit segments escalate from yellow to red past 80%.
 
 ```bash
 statusline colors off      # or set "colors": false in the config
@@ -268,7 +269,7 @@ on every status refresh — **no restart needed**.
 | `effort.level` | `effort` |
 | `thinking.enabled` | `thinking` |
 | `rate_limits.five_hour.used_percentage` | `rateLimits.fiveHour.usedPercentage` |
-| `rate_limits.week.used_percentage` | `rateLimits.week.usedPercentage` |
+| `rate_limits.seven_day.used_percentage` | `rateLimits.sevenDay.usedPercentage` |
 
 Every field is optional — partial or empty payloads still produce a usable context.
 

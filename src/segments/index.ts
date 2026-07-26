@@ -33,8 +33,8 @@ function modelName(ctx: StatusContext): string | null {
   return ctx.model?.id ? friendlyModel(ctx.model.id).name : null;
 }
 
-function fiveHourPercent(ctx: StatusContext): number {
-  const pct = ctx.rateLimits?.fiveHour?.usedPercentage;
+/** Gauge value for colour escalation; an unreported window never escalates. */
+function limitPercent(pct: number | undefined): number {
   return typeof pct === "number" ? pct : 0;
 }
 
@@ -148,10 +148,20 @@ export const segments: Segment[] = [
     id: "five-hour-limit",
     description: "Percentage of the 5-hour rate limit used (omitted when unreported)",
     defaultEnabled: false,
-    color: (ctx) => (fiveHourPercent(ctx) >= 80 ? "red" : "yellow"),
+    color: (ctx) => (limitPercent(ctx.rateLimits?.fiveHour?.usedPercentage) >= 80 ? "red" : "yellow"),
     render(ctx) {
       const pct = ctx.rateLimits?.fiveHour?.usedPercentage;
       return typeof pct === "number" ? `5h:${Math.round(pct)}%` : null;
+    },
+  },
+  {
+    id: "seven-day-limit",
+    description: "Percentage of the 7-day rate limit used (omitted when unreported)",
+    defaultEnabled: false,
+    color: (ctx) => (limitPercent(ctx.rateLimits?.sevenDay?.usedPercentage) >= 80 ? "red" : "yellow"),
+    render(ctx) {
+      const pct = ctx.rateLimits?.sevenDay?.usedPercentage;
+      return typeof pct === "number" ? `7d:${Math.round(pct)}%` : null;
     },
   },
   {

@@ -298,6 +298,24 @@ describe("codewith-mirroring segments", () => {
     expect(color(ctx({ rate_limits: { five_hour: { used_percentage: 12 } } }))).toBe("yellow");
   });
 
+  test("seven-day-limit reads the seven_day window, not a week alias", async () => {
+    const out = await getSegment("seven-day-limit")!.render(
+      ctx({ rate_limits: { seven_day: { used_percentage: 12.2 } } }),
+    );
+    expect(out).toBe("7d:12%");
+  });
+  test("seven-day-limit null when the host reports only the 5h window", async () => {
+    const out = await getSegment("seven-day-limit")!.render(
+      ctx({ rate_limits: { five_hour: { used_percentage: 30 } } }),
+    );
+    expect(out).toBeNull();
+  });
+  test("both limit windows render side by side", async () => {
+    const c = ctx({ rate_limits: { five_hour: { used_percentage: 90 }, seven_day: { used_percentage: 40 } } });
+    expect(await getSegment("five-hour-limit")!.render(c)).toBe("5h:90%");
+    expect(await getSegment("seven-day-limit")!.render(c)).toBe("7d:40%");
+  });
+
   test("thread-title renders the renamed thread", async () => {
     expect(await getSegment("thread-title")!.render(ctx({ session_name: "ship it" }))).toBe("ship it");
   });

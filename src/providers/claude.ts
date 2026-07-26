@@ -33,7 +33,7 @@ export function parseClaudeInput(input: Record<string, any>): StatusContext {
     rateLimits: input?.rate_limits
       ? {
           fiveHour: { usedPercentage: numberOr(input.rate_limits.five_hour?.used_percentage) },
-          week: { usedPercentage: numberOr(input.rate_limits.week?.used_percentage) },
+          sevenDay: { usedPercentage: numberOr(input.rate_limits.seven_day?.used_percentage) },
         }
       : undefined,
   };
