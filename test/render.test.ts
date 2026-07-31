@@ -12,6 +12,17 @@ beforeEach(() => {
   process.env.STATUSLINE_CONFIG = join(dir, "config.json");
 });
 
+async function withoutNoColor<T>(fn: () => Promise<T>): Promise<T> {
+  const previous = process.env.NO_COLOR;
+  delete process.env.NO_COLOR;
+  try {
+    return await fn();
+  } finally {
+    if (previous === undefined) delete process.env.NO_COLOR;
+    else process.env.NO_COLOR = previous;
+  }
+}
+
 describe("renderLine", () => {
   test("joins enabled segments with separator, skipping nulls", async () => {
     const ctx = parseClaudeInput(fixture);
@@ -30,9 +41,11 @@ describe("renderLine", () => {
   });
 
   test("colours segments that ask for one", async () => {
-    const ctx = parseClaudeInput({ ...fixture, session_name: "ship it" });
-    const line = await renderLine(ctx, { separator: " · ", segments: ["thread-title"], colors: true });
-    expect(line).toBe("\u001b[34mship it\u001b[0m");
+    await withoutNoColor(async () => {
+      const ctx = parseClaudeInput({ ...fixture, session_name: "ship it" });
+      const line = await renderLine(ctx, { separator: " · ", segments: ["thread-title"], colors: true });
+      expect(line).toBe("\u001b[34mship it\u001b[0m");
+    });
   });
 
   test("colours are off when the config disables them", async () => {
@@ -55,11 +68,13 @@ describe("renderLine", () => {
   });
 
   test("a segment colour may escalate with its value", async () => {
-    const hot = parseClaudeInput({ ...fixture, rate_limits: { five_hour: { used_percentage: 95 } } });
-    const cool = parseClaudeInput({ ...fixture, rate_limits: { five_hour: { used_percentage: 5 } } });
-    const cfg = { separator: " · ", segments: ["five-hour-limit"], colors: true };
-    expect(await renderLine(hot, cfg)).toBe("\u001b[31m5h:95%\u001b[0m");
-    expect(await renderLine(cool, cfg)).toBe("\u001b[33m5h:5%\u001b[0m");
+    await withoutNoColor(async () => {
+      const hot = parseClaudeInput({ ...fixture, rate_limits: { five_hour: { used_percentage: 95 } } });
+      const cool = parseClaudeInput({ ...fixture, rate_limits: { five_hour: { used_percentage: 5 } } });
+      const cfg = { separator: " · ", segments: ["five-hour-limit"], colors: true };
+      expect(await renderLine(hot, cfg)).toBe("\u001b[31m5h:95%\u001b[0m");
+      expect(await renderLine(cool, cfg)).toBe("\u001b[33m5h:5%\u001b[0m");
+    });
   });
 
   test("uncoloured segments are untouched", async () => {
